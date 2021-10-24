@@ -1,4 +1,4 @@
-package socket
+package fishsocket
 
 import (
 	"context"
@@ -74,7 +74,7 @@ func (s *Server) Run(ctx context.Context, ops ...ServerOption) (err error) {
 		}
 	}()
 
-	log.Printf("server started at %s\n", s.address)
+	log.Printf("listen and server started at %s\n", s.address)
 	<-ctx.Done()
 
 	// Wait

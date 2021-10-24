@@ -1,4 +1,4 @@
-package socket
+package fishsocket
 
 type serverOptionsFunc func(options *serverOptions)
 
