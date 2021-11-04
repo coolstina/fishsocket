@@ -6,9 +6,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type UpgraderHandleFunc func(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (*websocket.Conn, error)
+// UpgraderHandleFunc WebSocket upgrader handler func.
+type UpgraderHandleFunc func(w http.ResponseWriter,
+	r *http.Request, responseHeader http.Header) (*websocket.Conn, error)
 
+// UpgraderHandleFuncWithDefault Get a new default upgrader handler func type.
 func UpgraderHandleFuncWithDefault() UpgraderHandleFunc {
-	upgrader := websocket.Upgrader{}
-	return upgrader.Upgrade
+	return (&websocket.Upgrader{}).Upgrade
 }

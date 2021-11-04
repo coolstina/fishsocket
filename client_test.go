@@ -3,10 +3,11 @@ package fishsocket
 import (
 	"context"
 	"log"
-	"os"
-	"os/signal"
+	"net/http"
 	"testing"
 	"time"
+
+	"github.com/coolstina/fishserver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
@@ -21,20 +22,18 @@ type ClientSuite struct {
 	client *Client
 }
 
-const socketPath = "/websocket"
-const socketHost = "localhost:8970"
+const socketPath = "/web"
+const socketHost = "localhost:9090"
 
 func (suite *ClientSuite) BeforeTest(suiteName, testName string) {
 	go func() {
-		socketServe()
+		serve()
 	}()
 
-	var err error
-	suite.client, err = NewClient(
-		socketHost,
-		socketPath,
-	)
-	assert.NoError(suite.T(), err)
+	suite.client = NewClient(socketHost,
+		WithClientReconnectInterval(1*time.Second),
+	).SetPath(socketPath)
+	assert.NotNil(suite.T(), suite.client)
 }
 
 func (suite *ClientSuite) Test_Connect() {
@@ -48,22 +47,43 @@ func (suite *ClientSuite) Test_Connect() {
 	assert.Equal(suite.T(), []byte("helloworld"), message)
 }
 
-func socketServe() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
+func serve() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/websocket", echo)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	server := fishserver.NewServer(socketHost,
+		fishserver.WithWaitTimeout(5*time.Millisecond),
+		fishserver.WithContext(ctx),
+		fishserver.WithCancelFunc(cancel),
+	).SetHandler(mux)
 
-	go func() {
-		oscall := <-c
-		log.Printf("system call:%+v", oscall)
-		cancel()
-	}()
+	if err := server.Run(); err != nil {
+		log.Printf("failed to serve: %+v\n", err)
+	}
+}
 
-	server := NewServer(socketHost)
-	server.ServeMux().HandleFunc(socketPath, server.DefaultEchoTest())
+func echo(writer http.ResponseWriter, request *http.Request) {
+	upgrader := UpgraderHandleFuncWithDefault()
+	conn, err := upgrader(writer, request, nil)
+	if err != nil {
+		log.Printf("websocket server upgrader failed: %+v\n", err)
+		return
+	}
 
-	if err := server.Run(ctx); err != nil {
-		log.Printf("failed to serve:+%v\n", err)
+	for {
+		mt, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Printf("websocket server read message to failed: %+v\n", err)
+			break
+		}
+
+		log.Printf("websocker server recevied message: %s\n", message)
+		err = conn.WriteMessage(mt, message)
+		if err != nil {
+			log.Printf("websocket server write message to failed: %+v\n", err)
+		}
+
+		log.Printf("websocket server send message: %s\n", message)
 	}
 }

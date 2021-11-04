@@ -1,17 +1,3 @@
-![fishsocket](assert/banner/fishsocket.jpg)
-
-Use [gorilla/websocket](https://github.com/gorilla/websocket) quick build application.
-
-## Installation
-
-```shell script
-go get -u github.com/coolstina/fishsocket
-```
-
-
-## Build WebSocket Server
-
-```go
 package main
 
 import (
@@ -63,50 +49,3 @@ func echo(writer http.ResponseWriter, request *http.Request) {
 		time.Sleep(5 * time.Second)
 	}
 }
-```
-
-## Build WebSocket Client 
-
-```go
-package main
-
-import (
-	"fmt"
-	"log"
-	"time"
-
-	"github.com/coolstina/fishsocket"
-	"github.com/gorilla/websocket"
-)
-
-const (
-	address = "localhost:9099"
-	path    = "/websocket"
-)
-
-func main() {
-	client := fishsocket.NewClient(address,
-		fishsocket.WithClientReconnectInterval(1*time.Second),
-	).SetPath(path)
-
-	for {
-		// Write message.
-		err := client.Connect().WriteMessage(websocket.TextMessage, []byte("Hello WebSocket Server"))
-		if err != nil {
-			log.Printf("Write message to WebSocket Server to failed")
-			client.SetConnectError(err)
-			continue
-		}
-
-		// Read message.
-		mt, message, err := client.Connect().ReadMessage()
-		if err != nil {
-			fmt.Printf("Read message from WebSocket client to failed: %+v\n", err)
-			client.SetConnectError(err)
-			continue
-		}
-
-		fmt.Printf("mt: %+v, message: %s\n", mt, message)
-	}
-}
-```
